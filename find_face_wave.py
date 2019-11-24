@@ -12,9 +12,10 @@
 #
 import cv2
 import numpy as np
+from pypot.creatures import PoppyHumanoid
 
 ################################################# Constants
-TOLERANCE = 100 # in pixels
+TOLERANCE = 15 # degrees
 
 # focal length = pixel width * distance / actual width
 # this variable will change depending on the camera, and is currently a 
@@ -37,65 +38,64 @@ def find_angle(w, f_dist):
     theta = np.arctan(w / f_dist)
     return np.degrees(theta)
 
-def poppy_turn(facee):
-    f_dist = find_distance(facee)
-    theta = find_angle(facee.w, f_dist)
+def wave(poppy):
+    pass
 
+def poppy_turn(poppy, facee, frame):
+    """ Poppy reacts to the position of a face."""
+    # Format of facee: [x, y, w, h]
+    # print(facee)
+    w = facee[2]
+    x = facee[0] + 0.5 * w
 
+    f_dist = find_distance(w)
+    theta = find_angle(x - x_centre, f_dist)
 
-# def find_location(screen_middle, item_x, frane):
-#     if item_x < screen_middle - TOLERANCE:
-#         turn_left(frane)
-#     elif screen_middle + TOLERANCE < item_x:
-#         turn_right(frane)
-#     else:
-#         in_middle(frane)
+    # print("angle: {0}".format(theta)) 
+    # print("distance: {0}".format(f_dist))
+    # print()
+    cv2.putText(frame, "angle: " + str(theta), 
+                (10, 100),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (0, 255, 0), 2)
 
-def turn_right(frane):
-    h, w = frane.shape[:2]
-    y = int(h / 2)
-    x = int(w - 10)
-    cv2.circle(frane, (x, y), 8, (0, 0, 255), -1)
-
-
-def turn_left(frane):
-    h, w = frane.shape[:2]
-    y = int(h / 2)
-    cv2.circle(frane, (10, y), 8, (0, 0, 255), -1)
-
-
-def in_middle(frane):
-    h, w = frane.shape[:2]
-    y = int(h / 2)
-    x = int(w / 2)
-    cv2.circle(frane, (x, y), 8, (0, 0, 255), -1)
-
+    if -TOLERANCE < theta < TOLERANCE:
+        wave()
+    else:
+        poppy.head_z.goto_position(theta, wait=True)
 
 # https://pythonprogramming.net/loading-video-python-opencv-tutorial/?completed=/loading-images-python-opencv-tutorial/
 
-################################################# Begin Video Capture
+################################################# Main Code
+
+poppy = PoppyHumanoid()
+poppy.head_z.goto_behavior = "minjerk"
+
 cap = cv2.VideoCapture(0) # begins camera at port 0
+x_centre = int(cap.get(3) / 2) # gets video width and divides by 2
+isOpen = True
 
 # ----- writing video to file
 # fourcc = cv2.VideoWriter_fourcc(*"XVID")
 # out = cv2.VideoWriter("output.avi", fourcc, 20, (640, 480))
 # cap.set(15, 0.1)
 
-x_centre = cap.get(3) / 2 # gets video width and divides by 2
-isOpen = True
-
 # Path to openCV cascade file
 faceCascade = cv2.CascadeClassifier("C:\\Users\\Ilke\\AppData\\Local\\Programs\\Python\\Python37-32\\Lib\\site-packages\\cv2\\data\\haarcascade_frontalface_default.xml")
 
 while (isOpen):
-    
+    # ---------- event checking 
     if cv2.waitKey(1) & 0xFF == ord("q"): # window closes if 'q' is pressed
         isOpen = False
     
     ret, frame = cap.read()
     frame = cv2.flip(frame, 1)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # out.write(frame) # writes to file
+
+    # line through centre to 
+    # cv2.line(frame, (x_centre, 0), (x_centre, 500), (100, 100, 100), 3)
+
+    # out.write(frame) # writes frame to file
     faces = faceCascade.detectMultiScale(gray,
                                         scaleFactor=1.1, 
                                         minNeighbors=5, 
@@ -106,9 +106,6 @@ while (isOpen):
     faces = np.asarray(faces) # converts tuple of faces into array
     # print(faces)
 
-    # finds the centre x coordinate for each face
-    # faces_x = [ int(x + w /2) for (x, y, w, h) in faces]
-    
 
     # draws rectangles around all faces
     for (x, y, w, h) in faces:
@@ -118,11 +115,6 @@ while (isOpen):
                     (10, 50),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1, (0, 255, 0), 2)
-        # face_mid_x = int(x + w / 2)
-
-    # if ((x_centre - ()))\
-    # if face_mid_x != 0:
-    #     find_location(x_centre, face_mid_x, frame)
 
     # poppy_turn(face)
 
@@ -131,24 +123,9 @@ while (isOpen):
         face = faces[index] # chooses only one face 
         face = [val for val in face[0]] # removes extra array dimension
         
-        # Format of face: [x, y, w, h]
-        # print(face)
-        w = face[2]
-        x = face[0] + 0.5 * w
+        poppy_turn(poppy, face, frame)
 
-        f_dist = find_distance(w)
-        theta = find_angle(x - x_centre, f_dist)
-
-        print("angle: {0}".format(theta)) 
-        print("distance: {0}".format(f_dist))
-        print()
-
-        cv2.putText(frame, "angle: " + str(theta), 
-                    (10, 100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1, (0, 255, 0), 2)
     cv2.imshow('frame', frame)
-    # print("------------------------------------------------------------------/n")
 
 cap.release()
 # out.release() # releases the output file

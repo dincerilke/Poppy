@@ -10,7 +10,7 @@ from pypot.creatures import PoppyHumanoid
 
 poppy = PoppyHumanoid()
 
-[p.name for p in poppy.proimitives]
+[p.name for p in poppy.primitives]
 
 def wave():
     pass
